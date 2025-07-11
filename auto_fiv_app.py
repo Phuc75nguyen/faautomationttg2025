@@ -11,26 +11,7 @@ def detect_header_row(df_raw):
             return idx
     raise ValueError("Không tìm thấy dòng header chứa 'STT'")
 
-"""def load_and_flatten_eas(eas_bytes):
-    """Đọc file EAS.xlsx, bỏ qua các dòng không chứa dữ liệu thực tế (dòng [1], [2], [3]...)"""
-    # Đọc nguyên file vào DataFrame không header để detect header_row
-    df_raw = pd.read_excel(io.BytesIO(eas_bytes), header=None) #okie
-    # Bỏ qua các dòng không có thông tin, ví dụ dòng [1], [2], [3]...
-    df_raw = df_raw[~df_raw.iloc[:, 0].str.contains(r'^\[\d+\]$', na=False)].reset_index(drop=True)
-    # Tìm dòng header chứa 'STT'
-    header_row = detect_header_row(df_raw)
-    # Đọc lại với 2 dòng header
-    df = pd.read_excel(io.BytesIO(eas_bytes), header=[header_row, header_row+1])
-    # Flatten multi-index columns
-    flat_cols = []
-    for top, sub in df.columns:
-        if pd.notna(sub) and not str(sub).startswith("Unnamed"):
-            flat_cols.append(str(sub).strip())
-        else:
-            flat_cols.append(str(top).strip())
-    df.columns = flat_cols
-    return df
-#okie"""
+
 def load_and_flatten_eas(eas_bytes):
     """Đọc file EAS.xlsx, bỏ qua các dòng không chứa dữ liệu thực tế (dòng [1], [2], [3]...)"""
     # Đọc nguyên file vào DataFrame không header để detect header_row
