@@ -12,9 +12,12 @@ def detect_header_row(df_raw):
     raise ValueError("Không tìm thấy dòng header chứa 'STT'")
 
 def load_and_flatten_eas(eas_bytes):
-    """Đọc file EAS.xlsx với 2 dòng header, sau đó flatten tên cột."""
+    """Đọc file EAS.xlsx, bỏ qua các dòng không chứa dữ liệu thực tế (dòng [1], [2], [3]...)"""
     # Đọc nguyên file vào DataFrame không header để detect header_row
-    df_raw = pd.read_excel(io.BytesIO(eas_bytes), header=None)
+    df_raw = pd.read_excel(io.BytesIO(eas_bytes), header=None) #okie
+    # Bỏ qua các dòng không có thông tin, ví dụ dòng [1], [2], [3]...
+    df_raw = df_raw[~df_raw.iloc[:, 0].str.contains(r'^\[\d+\]$', na=False)].reset_index(drop=True)
+    # Tìm dòng header chứa 'STT'
     header_row = detect_header_row(df_raw)
     # Đọc lại với 2 dòng header
     df = pd.read_excel(io.BytesIO(eas_bytes), header=[header_row, header_row+1])
@@ -27,7 +30,7 @@ def load_and_flatten_eas(eas_bytes):
             flat_cols.append(str(top).strip())
     df.columns = flat_cols
     return df
-
+#okie
 def clean_eas(df):
     """Đổi tên các cột quan trọng và lọc bỏ dòng thiếu Buyer Name hoặc Revenue."""
     # Đổi tên cố định
@@ -107,7 +110,7 @@ def build_fiv(df_eas, df_kh):
             'Line_APMC_DimC':                '5301',
             'Line_APMD_DimD':                '00',
             'Line_APMF_DimF':                '0000',
-            'BHS_VATInvoiceDate_VATInvoice': row['ISSUE_DATE'],
+            'BHS_VATInvocieDate_VATInvoice': row['ISSUE_DATE'],
             'BHS_Form_VATInvoice':           '',
             'BHS_Serial_VATInvoice':         row.get('InvoiceSerial', ''),
             'BHS_Number_VATInvoice':         row.get('InvoiceNumber', ''),
@@ -120,7 +123,7 @@ def build_fiv(df_eas, df_kh):
         'PostingProfile','LineNum','Description','SalesPrice','SalesQty','LineAmount',
         'TaxAmount','TotalAmount','TaxGroupLine','TaxItemGroup','Line_MainAccountId',
         'Line_APMA_DimA','Line_APMC_DimC','Line_APMD_DimD','Line_APMF_DimF',
-        'BHS_VATInvoiceDate_VATInvoice','BHS_Form_VATInvoice','BHS_Serial_VATInvoice',
+        'BHS_VATInvocieDate_VATInvoice','BHS_Form_VATInvoice','BHS_Serial_VATInvoice',
         'BHS_Number_VATInvoice','BHS_Description_VATInvoice'
     ]
     return pd.DataFrame(records, columns=columns_order)
