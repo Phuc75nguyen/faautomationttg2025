@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st 
 import pandas as pd
 import io
 
@@ -118,7 +118,8 @@ def build_fiv(df_eas, df_kh):
 
 st.title("🧾 FIV Generator")
 st.markdown("""
-Upload hai file **EAS.xlsx** và **KH.xlsx**, ứng dụng sẽ tự động sinh file **Completed_FIV.xlsx** - Ưu tiên lookup theo MST/Tax code  
+Upload hai file **EAS.xlsx** và **KH.xlsx**, ứng dụng sẽ tự động sinh file **Completed_FIV.xlsx**  
+- Ưu tiên lookup theo MST/Tax code  
 - Fallback theo Buyer Name nếu MST không tìm thấy  
 - Tính TotalAmount = Revenue_ex_VAT + VAT_Amount
 """)
@@ -145,9 +146,8 @@ if eas_file and kh_file:
         with pd.ExcelWriter(
             towrite,
             engine="openpyxl",
-            # <<< THAY ĐỔI DUY NHẤT Ở ĐÂY >>>
             datetime_format="DD-MM-YYYY", # Định dạng ngày-tháng-năm
-            date_format="DD-MM-YYYY"
+            date_format="DD-MM-YYYY"      # Định dạng ngày-tháng-năm
         ) as writer:
             df_fiv.to_excel(writer, index=False, sheet_name="FIV")
         towrite.seek(0)
