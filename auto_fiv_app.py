@@ -11,7 +11,6 @@ def detect_header_row(df_raw):
             return idx
     raise ValueError("Không tìm thấy dòng header chứa 'STT'")
 
-
 def load_and_flatten_eas(eas_bytes):
     """Đọc file EAS.xlsx, bỏ qua các dòng không chứa dữ liệu thực tế (dòng [1], [2], [3]...)"""
     # Đọc nguyên file vào DataFrame không header để detect header_row
@@ -95,8 +94,8 @@ def build_fiv(df_eas, df_kh):
 
         records.append({
             'IdRef':                         idx + 1,
-            'InvoiceDate':                   row['ISSUE_DATE'],
-            'DocumentDate':                  row['ISSUE_DATE'],
+            'InvoiceDate':                   pd.to_datetime(row['ISSUE_DATE'], errors='coerce'),
+            'DocumentDate':                  pd.to_datetime(row['ISSUE_DATE'], errors='coerce'),
             'CurrencyCode':                  'VND',
             'CustAccount':                   cust_acc,
             'InvoiceAccount':                cust_acc,
@@ -121,7 +120,7 @@ def build_fiv(df_eas, df_kh):
             'Line_APMC_DimC':                '5301',
             'Line_APMD_DimD':                '00',
             'Line_APMF_DimF':                '0000',
-            'BHS_VATInvocieDate_VATInvoice': row['ISSUE_DATE'],
+            'BHS_VATInvocieDate_VATInvoice': pd.to_datetime(row['ISSUE_DATE'], errors='coerce'),
             'BHS_Form_VATInvoice':           '',
             'BHS_Serial_VATInvoice':         row.get('InvoiceSerial', ''),
             'BHS_Number_VATInvoice':         row.get('InvoiceNumber', ''),
@@ -160,7 +159,7 @@ if eas_file and kh_file:
 
         towrite = io.BytesIO()
         with pd.ExcelWriter(towrite, engine="openpyxl") as writer:
-            df_fiv.to_excel(writer, index=False, sheet_name="FIV")
+            df_fiv.to_excel(writer, index=False, sheet_name="FIV", date_format="yyyy-mm-dd")
         towrite.seek(0)
 
         st.download_button(
