@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st 
 import pandas as pd
 import io
 
@@ -38,8 +38,6 @@ def load_and_flatten_eas(eas_bytes):
     df.columns = flat_cols
 
     return df
-
-
 
 def clean_eas(df):
     """Đổi tên các cột quan trọng và lọc bỏ dòng thiếu Buyer Name hoặc Revenue."""
@@ -138,6 +136,7 @@ def build_fiv(df_eas, df_kh):
     ]
     return pd.DataFrame(records, columns=columns_order)
 
+# Cập nhật lại phần xuất file Excel
 st.title("🧾 FIV Generator")
 st.markdown("""
 Upload hai file **EAS.xlsx** và **KH.xlsx**, ứng dụng sẽ tự động sinh file **Completed_FIV.xlsx**  
