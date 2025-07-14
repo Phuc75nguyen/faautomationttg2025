@@ -134,27 +134,23 @@ if eas_file and kh_file:
         df_eas   = clean_eas(df_raw)
         df_fiv   = build_fiv(df_eas, df_kh)
 
-        # <<< BẮT ĐẦU THAY ĐỔI >>>
         # 1. Chuyển đổi các cột ngày tháng sang đúng kiểu datetime của pandas
         date_columns = ['InvoiceDate', 'DocumentDate', 'BHS_VATInvocieDate_VATInvoice']
         for col in date_columns:
             # Chuyển đổi và bỏ thông tin giờ/phút/giây không cần thiết
             df_fiv[col] = pd.to_datetime(df_fiv[col]).dt.normalize()
-        # <<< KẾT THÚC THAY ĐỔI >>>
 
         towrite = io.BytesIO()
-        # <<< BẮT ĐẦU THAY ĐỔI >>>
         # 2. Khi ghi ra Excel, chỉ định định dạng ngày tháng để Excel hiểu đúng
         with pd.ExcelWriter(
             towrite,
             engine="openpyxl",
-            datetime_format="DD-MM-YYYY", # Định dạng cho các cột ngày tháng
-            date_format="DD-MM-YYYY"      # Định dạng cho các cột chỉ có ngày (dự phòng)
+            # <<< THAY ĐỔI DUY NHẤT Ở ĐÂY >>>
+            datetime_format="DD-MM-YYYY", # Định dạng ngày-tháng-năm
+            date_format="DD-MM-YYYY"
         ) as writer:
             df_fiv.to_excel(writer, index=False, sheet_name="FIV")
-        # <<< KẾT THÚC THAY ĐỔI >>>
         towrite.seek(0)
-
 
         st.download_button(
             "📥 Tải Completed_FIV.xlsx",
