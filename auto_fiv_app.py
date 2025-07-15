@@ -141,8 +141,10 @@ if eas_file and kh_file:
             # Chuyển đổi và bỏ thông tin giờ/phút/giây không cần thiết
             #df_fiv[col] = pd.to_datetime(df_fiv[col]).dt.normalize()
             #for col in date_columns:
-            df_fiv[col] = pd.to_datetime(df_fiv[col]).dt.date
+            #df_fiv[col] = pd.to_datetime(df_fiv[col]).dt.date
+            df_fiv[col] = pd.to_datetime(df_fiv[col], errors='raise').dt.normalize()
             # 2) Ép thành chuỗi theo định dạng dd-mm-yyyy
+            #df_fiv[col] = df_fiv[col].dt.strftime('%d-%m-%Y')
             df_fiv[col] = df_fiv[col].dt.strftime('%d-%m-%Y')
 
         with pd.ExcelWriter('Completed_FIV.xlsx', engine='openpyxl') as writer:
