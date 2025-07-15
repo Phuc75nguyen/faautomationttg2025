@@ -139,7 +139,8 @@ if eas_file and kh_file:
         date_columns = ['InvoiceDate', 'DocumentDate', 'BHS_VATInvocieDate_VATInvoice']
         for col in date_columns:
             # Chuyển đổi và bỏ thông tin giờ/phút/giây không cần thiết
-            df_fiv[col] = pd.to_datetime(df_fiv[col]).dt.normalize()
+            #df_fiv[col] = pd.to_datetime(df_fiv[col]).dt.normalize()
+            df_fiv[col] = pd.to_datetime(df_fiv[col]).dt.date
 
         towrite = io.BytesIO()
         # 2. Khi ghi ra Excel, chỉ định định dạng ngày tháng để Excel hiểu đúng
