@@ -164,7 +164,7 @@ if eas_file and kh_file:
 
         st.download_button(
             "📥 Tải Completed_FIV.xlsx",
-            data=towrite,
+            #data=towrite,
             file_name="Completed_FIV.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
