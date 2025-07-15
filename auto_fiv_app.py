@@ -139,12 +139,17 @@ if eas_file and kh_file:
         date_columns = ['InvoiceDate', 'DocumentDate', 'BHS_VATInvocieDate_VATInvoice']
         for col in date_columns:
             # Chuyển đổi và bỏ thông tin giờ/phút/giây không cần thiết
+            #df_fiv[col] = pd.to_datetime(df_fiv[col]).dt.normalize()
+            #for col in date_columns:
             df_fiv[col] = pd.to_datetime(df_fiv[col]).dt.date
             # 2) Ép thành chuỗi theo định dạng dd-mm-yyyy
             df_fiv[col] = df_fiv[col].dt.strftime('%d-%m-%Y')
-        towrite = io.BytesIO()
-        
-        # 2. Khi ghi ra Excel, chỉ định định dạng ngày tháng để Excel hiểu đúng
+
+        with pd.ExcelWriter('Completed_FIV.xlsx', engine='openpyxl') as writer:
+            df_fiv.to_excel(writer, index=False, sheet_name='FIV')
+
+        #towrite = io.BytesIO()
+        """# 2. Khi ghi ra Excel, chỉ định định dạng ngày tháng để Excel hiểu đúng
         with pd.ExcelWriter(
             towrite,
             engine="openpyxl",
@@ -152,7 +157,8 @@ if eas_file and kh_file:
             date_format="DD-MM-YYYY"      # Định dạng ngày-tháng-năm
         ) as writer:
             df_fiv.to_excel(writer, index=False, sheet_name="FIV")
-        towrite.seek(0)
+        towrite.seek(0)"""
+
 
         st.download_button(
             "📥 Tải Completed_FIV.xlsx",
