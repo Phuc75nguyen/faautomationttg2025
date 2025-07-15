@@ -150,8 +150,8 @@ if eas_file and kh_file:
         with pd.ExcelWriter('Completed_FIV.xlsx', engine='openpyxl') as writer:
             df_fiv.to_excel(writer, index=False, sheet_name='FIV')
 
-        #towrite = io.BytesIO()
-        """# 2. Khi ghi ra Excel, chỉ định định dạng ngày tháng để Excel hiểu đúng
+        towrite = io.BytesIO()
+        # 2. Khi ghi ra Excel, chỉ định định dạng ngày tháng để Excel hiểu đúng
         with pd.ExcelWriter(
             towrite,
             engine="openpyxl",
@@ -159,12 +159,12 @@ if eas_file and kh_file:
             date_format="DD-MM-YYYY"      # Định dạng ngày-tháng-năm
         ) as writer:
             df_fiv.to_excel(writer, index=False, sheet_name="FIV")
-        towrite.seek(0)"""
+        towrite.seek(0)
 
 
         st.download_button(
             "📥 Tải Completed_FIV.xlsx",
-            #data=towrite,
+            data=towrite,
             file_name="Completed_FIV.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
