@@ -141,6 +141,9 @@ if eas_file and kh_file:
             # Chuyển đổi và bỏ thông tin giờ/phút/giây không cần thiết
             #df_fiv[col] = pd.to_datetime(df_fiv[col]).dt.normalize()
             df_fiv[col] = pd.to_datetime(df_fiv[col]).dt.date
+            # 2) Ép thành chuỗi theo định dạng dd-mm-yyyy
+            df_fiv[col] = df_fiv[col].dt.strftime('%d-%m-%Y')
+        
 
         towrite = io.BytesIO()
         # 2. Khi ghi ra Excel, chỉ định định dạng ngày tháng để Excel hiểu đúng
