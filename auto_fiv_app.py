@@ -93,7 +93,7 @@ def build_fiv(df_eas, df_kh):
             'TotalAmount':                   total_amt,
             'TaxGroupLine':                  'OU',
             'TaxItemGroup':                  '10%',
-            'Line_MainAccountId':            '5301',
+            'Line_MainAccountId':            '511301',
             'Line_APMA_DimA':                'TX',
             'Line_APMC_DimC':                '5301',
             'Line_APMD_DimD':                '00',
