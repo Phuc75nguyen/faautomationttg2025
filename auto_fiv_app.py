@@ -151,20 +151,26 @@ if eas_file and kh_file:
             df_fiv.to_excel(writer, index=False, sheet_name='FIV')
 
         towrite = io.BytesIO()
-        # 2. Khi ghi ra Excel, chỉ định định dạng ngày tháng để Excel hiểu đúng
-        with pd.ExcelWriter(
-            towrite,
-            engine="openpyxl",
-            datetime_format="DD/MM/YYYY", # Định dạng ngày-tháng-năm
-            date_format="DD/MM/YYYY"      # Định dạng ngày-tháng-năm
-        ) as writer:
-            df_fiv.to_excel(writer, index=False, sheet_name="FIV")
-        towrite.seek(0)
+        # Xuất Excel với xlsxwriter để ép định dạng cột
+        with pd.ExcelWriter(towrite, engine='xlsxwriter') as writer:        
+            df_fiv.to_excel(writer, index=False, sheet_name='FIV')
+            workbook  = writer.book
+            worksheet = writer.sheets['FIV']
 
+            # Format Text cho cột A (IdRef)
+            text_fmt = workbook.add_format({'num_format': '@'})
+            worksheet.set_column(0, 0, 10, text_fmt)
+
+            # Format Short Date (dd-mm-yyyy) cho cột B,C và AB
+            date_fmt = workbook.add_format({'num_format': 'dd-mm-yyyy'})
+            worksheet.set_column(1, 2, 12, date_fmt)    # InvoiceDate & DocumentDate
+            worksheet.set_column(27, 27, 12, date_fmt)  # BHS_VATInvocieDate_VATInvoice
+
+            towrite.seek(0)
 
         st.download_button(
             "📥 Tải Completed_FIV.xlsx",
-            data=towrite,
+            data=towrite.getvalue(),
             file_name="Completed_FIV.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
