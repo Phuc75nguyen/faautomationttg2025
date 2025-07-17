@@ -130,40 +130,16 @@ if eas_file and kh_file:
         df_eas = clean_eas(df_raw)
         df_fiv = build_fiv(df_eas, df_kh)
 
-        # --- Chuyển IdRef thành string để Excel hiểu text ---
         df_fiv['IdRef'] = df_fiv['IdRef'].astype(str)
-
-        # --- Chuyển các cột date thành date (không giờ) ---
         date_cols = ['InvoiceDate', 'DocumentDate', 'BHS_VATInvocieDate_VATInvoice']
         for c in date_cols:
-            df_fiv[c] = pd.to_datetime(df_fiv[c], errors='raise').dt.date
+            df_fiv[c] = pd.to_datetime(df_fiv[c]).dt.date
 
-        #date_cols = ['InvoiceDate', 'DocumentDate', 'BHS_VATInvocieDate_VATInvoice']
-        #for c in date_cols:
-            #df_fiv[c] = pd.to_datetime(df_fiv[c], errors='raise').dt.strftime('%m/%d/%Y')"""
-
-        # --- Ghi Excel với định dạng ---
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(output, engine='xlsxwriter', date_format='dd/mm/yyyy') as writer:
             df_fiv.to_excel(writer, index=False, sheet_name='FIV')
-            wb = writer.book
-            ws = writer.sheets['FIV']
-
-            # Text format cho IdRef → tam giác xanh
-            txt_fmt = wb.add_format({'num_format': '@'})
-            ws.set_column(0, 0, 10, txt_fmt)
-
-            # Short Date format cho các cột ngày
-            dt_fmt = wb.add_format({'num_format': 'dd/mm/yyyy'})
-            ws.set_column(1, 2, 12, dt_fmt)    # InvoiceDate & DocumentDate
-            ws.set_column(27, 27, 12, dt_fmt)  # BHS_VATInvocieDate_VATInvoice
 
         output.seek(0)
-        st.download_button(
-            "📥 Tải Completed_FIV.xlsx",
-            data=output.getvalue(),
-            file_name="Completed_FIV.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        st.download_button("📥 Tải Completed_FIV.xlsx", data=output.getvalue(), file_name="Completed_FIV.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except Exception as e:
         st.error(f"Có lỗi: {e}")
