@@ -136,39 +136,40 @@ kh_file  = st.file_uploader("Chọn file KH.xlsx", type="xlsx")
 
 if eas_file and kh_file:
     try:
-        # Đọc dữ liệu input
+        # Đọc dữ liệu đầu vào
         df_kh     = pd.read_excel(kh_file)
         eas_bytes = eas_file.read()
 
-        # Xử lý & xây dựng FIV
-        df_raw  = load_and_flatten_eas(eas_bytes)
-        df_eas  = clean_eas(df_raw)
-        df_fiv  = build_fiv(df_eas, df_kh)
+        # Tiền xử lý và xây dựng FIV
+        df_raw = load_and_flatten_eas(eas_bytes)
+        df_eas = clean_eas(df_raw)
+        df_fiv = build_fiv(df_eas, df_kh)
 
-        # Ép cột ngày thành datetime (chỉ date, bỏ time)
+        # Chuẩn hóa cột ngày
         date_cols = ['InvoiceDate', 'DocumentDate', 'BHS_VATInvocieDate_VATInvoice']
         for c in date_cols:
             df_fiv[c] = pd.to_datetime(df_fiv[c], errors='raise').dt.normalize()
 
-        # Xuất Excel với định dạng cột
+        # Ghi Excel với định dạng cột
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             df_fiv.to_excel(writer, index=False, sheet_name='FIV')
             wb = writer.book
             ws = writer.sheets['FIV']
 
-            # 1) Định dạng TEXT cho cột IdRef → tam giác xanh
+            # Ép IdRef thành Text (tam giác xanh)
             txt_fmt = wb.add_format({'num_format': '@'})
             ws.set_column(0, 0, 10, txt_fmt)
 
-            # 2) Định dạng Short Date (dd/mm/yyyy) cho các cột ngày
+            # Định dạng Short Date cho cột ngày
             dt_fmt = wb.add_format({'num_format': 'dd/mm/yyyy'})
             ws.set_column(1, 2, 12, dt_fmt)    # InvoiceDate & DocumentDate
-            ws.set_column(27, 27, 12, dt_fmt)  # BHS_VATInvocieDate_VATInvoicea
+            ws.set_column(27, 27, 12, dt_fmt)  # BHS_VATInvocieDate_VATInvoice
 
-            writer.save()
-
+        # Đặt con trỏ về đầu buffer
         output.seek(0)
+
+        # Nút tải file về
         st.download_button(
             "📥 Tải Completed_FIV.xlsx",
             data=output.getvalue(),
