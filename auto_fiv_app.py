@@ -17,7 +17,6 @@ def load_and_flatten_eas(eas_bytes):
     header_row = detect_header_row(df_raw)
     df = pd.read_excel(io.BytesIO(eas_bytes), header=[header_row, header_row+1])
 
-    # Flatten MultiIndex
     flat_cols = []
     for top, sub in df.columns:
         if pd.notna(sub) and not str(sub).startswith("Unnamed"):
@@ -109,7 +108,6 @@ def build_fiv(df_eas, df_kh):
     ]
     return pd.DataFrame(records, columns=cols_order)
 
-# Streamlit UI
 st.title("🧾 FIV Generator")
 st.markdown("""
 Upload hai file **EAS.xlsx** và **KH.xlsx**, ứng dụng sẽ tự động sinh file **Completed_FIV.xlsx**  
@@ -130,15 +128,14 @@ if eas_file and kh_file:
         df_eas = clean_eas(df_raw)
         df_fiv = build_fiv(df_eas, df_kh)
 
-        # --- Chuyển IdRef thành string để Excel hiểu text ---
+        # Ép IdRef thành string (giữ đúng tam giác xanh)
         df_fiv['IdRef'] = df_fiv['IdRef'].astype(str)
 
-        # --- Chuyển các cột date thành date (không giờ) ---
-        date_cols = ['InvoiceDate', 'DocumentDate', 'BHS_VATInvocieDate_VATInvoice']
-        for c in date_cols:
-            df_fiv[c] = pd.to_datetime(df_fiv[c], errors='raise').dt.date
+        # Giữ datetime64 chỉ phần ngày (bỏ giờ-phút-giây)
+        for c in ['InvoiceDate', 'DocumentDate', 'BHS_VATInvocieDate_VATInvoice']:
+            df_fiv[c] = pd.to_datetime(df_fiv[c], errors='raise').dt.normalize()
 
-        # --- Ghi Excel với định dạng ---
+        # Xuất Excel với định dạng cột
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             df_fiv.to_excel(writer, index=False, sheet_name='FIV')
@@ -149,10 +146,11 @@ if eas_file and kh_file:
             txt_fmt = wb.add_format({'num_format': '@'})
             ws.set_column(0, 0, 10, txt_fmt)
 
-            # Short Date format cho các cột ngày
-            dt_fmt = wb.add_format({'num_format': 'dd/mm/yyyy'})
-            ws.set_column(1, 2, 12, dt_fmt)    # InvoiceDate & DocumentDate
-            ws.set_column(27, 27, 12, dt_fmt)  # BHS_VATInvocieDate_VATInvoice
+            # Bắt buộc dd/mm/yyyy với dấu slash
+            date_fmt = wb.add_format({'num_format': 'dd"/"mm"/"yyyy'})
+            # Cột B, C và AB (index 1,2 và 27)
+            ws.set_column(1, 2, 12, date_fmt)
+            ws.set_column(27, 27, 12, date_fmt)
 
         output.seek(0)
         st.download_button(
