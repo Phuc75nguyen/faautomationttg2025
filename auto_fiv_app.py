@@ -16,14 +16,15 @@ def load_and_flatten_eas(eas_bytes):
     df_raw = df_raw[~df_raw.iloc[:, 0].str.contains(r'^\[\d+\]$', na=False)].reset_index(drop=True)
     header_row = detect_header_row(df_raw)
     df = pd.read_excel(io.BytesIO(eas_bytes), header=[header_row, header_row+1])
-    # Flatten MultiIndex columns
-    flat = []
+
+    # Flatten MultiIndex
+    flat_cols = []
     for top, sub in df.columns:
         if pd.notna(sub) and not str(sub).startswith("Unnamed"):
-            flat.append(sub)
+            flat_cols.append(str(sub).strip())
         else:
-            flat.append(top)
-    df.columns = [str(x).strip() for x in flat]
+            flat_cols.append(str(top).strip())
+    df.columns = flat_cols
     return df
 
 def clean_eas(df):
@@ -39,33 +40,36 @@ def clean_eas(df):
     mst_col = next((c for c in df.columns if 'Mã số thuế' in c or 'Tax code' in c), None)
     if mst_col:
         df = df.rename(columns={mst_col: 'TaxCode'})
-    return df.dropna(subset=['Buyer Name', 'Revenue_ex_VAT']).reset_index(drop=True)
+    df = df.dropna(subset=['Buyer Name', 'Revenue_ex_VAT']).reset_index(drop=True)
+    return df
 
 def build_fiv(df_eas, df_kh):
-    taxkey = next((c for c in df_kh.columns 
-                   if any(x in c for x in ['MST','CMND','PASSPORT','Tax code'])), None)
-    recs = []
-    for i, row in df_eas.iterrows():
+    taxkey_kh = next((c for c in df_kh.columns 
+                      if any(x in c for x in ['MST','CMND','PASSPORT','Tax code'])), None)
+    records = []
+    for idx, row in df_eas.iterrows():
         buyer = row['Buyer Name']
-        acc = pd.NA
-        if 'TaxCode' in row and pd.notna(row['TaxCode']) and taxkey:
-            m = df_kh[df_kh[taxkey] == row['TaxCode']]['Customer account']
-            if not m.empty: acc = m.iat[0]
-        if pd.isna(acc):
-            m = df_kh[df_kh['Name']==buyer]['Customer account']
-            if not m.empty: acc = m.iat[0]
+        cust_acc = pd.NA
+        if 'TaxCode' in row and pd.notna(row['TaxCode']) and taxkey_kh:
+            m = df_kh[df_kh[taxkey_kh] == row['TaxCode']]['Customer account']
+            if not m.empty:
+                cust_acc = m.iat[0]
+        if pd.isna(cust_acc):
+            m = df_kh[df_kh['Name'] == buyer]['Customer account']
+            if not m.empty:
+                cust_acc = m.iat[0]
 
-        rev = row['Revenue_ex_VAT']
-        vat = row.get('VAT_Amount', 0)
-        total = rev + vat
+        line_amount = row['Revenue_ex_VAT']
+        vat_amount  = row.get('VAT_Amount', 0)
+        total_amt   = line_amount + vat_amount
 
-        recs.append({
-            'IdRef':                         i+1,
+        records.append({
+            'IdRef':                         idx + 1,
             'InvoiceDate':                   row['ISSUE_DATE'],
             'DocumentDate':                  row['ISSUE_DATE'],
             'CurrencyCode':                  'VND',
-            'CustAccount':                   acc,
-            'InvoiceAccount':                acc,
+            'CustAccount':                   cust_acc,
+            'InvoiceAccount':                cust_acc,
             'SalesName':                     buyer,
             'APMA_DimA':                     'TX',
             'APMC_DimC':                     '0000',
@@ -75,11 +79,11 @@ def build_fiv(df_eas, df_kh):
             'PostingProfile':                '131103',
             'LineNum':                       1,
             'Description':                   'Doanh thu dịch vụ spa',
-            'SalesPrice':                    rev,
+            'SalesPrice':                    line_amount,
             'SalesQty':                      1,
-            'LineAmount':                    rev,
-            'TaxAmount':                     vat,
-            'TotalAmount':                   total,
+            'LineAmount':                    line_amount,
+            'TaxAmount':                     vat_amount,
+            'TotalAmount':                   total_amt,
             'TaxGroupLine':                  'OU',
             'TaxItemGroup':                  '10%',
             'Line_MainAccountId':            '511301',
@@ -89,22 +93,29 @@ def build_fiv(df_eas, df_kh):
             'Line_APMF_DimF':                '0000',
             'BHS_VATInvocieDate_VATInvoice': row['ISSUE_DATE'],
             'BHS_Form_VATInvoice':           '',
-            'BHS_Serial_VATInvoice':         row.get('InvoiceSerial',''),
-            'BHS_Number_VATInvoice':         row.get('InvoiceNumber',''),
+            'BHS_Serial_VATInvoice':         row.get('InvoiceSerial', ''),
+            'BHS_Number_VATInvoice':         row.get('InvoiceNumber', ''),
             'BHS_Description_VATInvoice':    'Doanh thu dịch vụ spa'
         })
-    cols = recs[0].keys()
-    return pd.DataFrame(recs, columns=cols)
 
-# --- Streamlit UI ---
+    cols_order = [
+        'IdRef','InvoiceDate','DocumentDate','CurrencyCode','CustAccount','InvoiceAccount',
+        'SalesName','APMA_DimA','APMC_DimC','APMD_DimD','APMF_DimF','TaxGroupHeader',
+        'PostingProfile','LineNum','Description','SalesPrice','SalesQty','LineAmount',
+        'TaxAmount','TotalAmount','TaxGroupLine','TaxItemGroup','Line_MainAccountId',
+        'Line_APMA_DimA','Line_APMC_DimC','Line_APMD_DimD','Line_APMF_DimF',
+        'BHS_VATInvocieDate_VATInvoice','BHS_Form_VATInvoice','BHS_Serial_VATInvoice',
+        'BHS_Number_VATInvoice','BHS_Description_VATInvoice'
+    ]
+    return pd.DataFrame(records, columns=cols_order)
+
+# Streamlit UI
 st.title("🧾 FIV Generator")
 st.markdown("""
 Upload hai file **EAS.xlsx** và **KH.xlsx**, ứng dụng sẽ tự động sinh file **Completed_FIV.xlsx**  
 - Lookup ưu tiên theo MST/Tax code  
 - Fallback theo Buyer Name  
-- Tính TotalAmount = Revenue_ex_VAT + VAT_Amount  
-- IdRef xuất dạng TEXT (tam giác xanh)  
-- Các cột date format dd/mm/yyyy
+- Tính TotalAmount = Revenue_ex_VAT + VAT_Amount
 """)
 
 eas_file = st.file_uploader("Chọn file EAS.xlsx", type="xlsx")
@@ -119,37 +130,40 @@ if eas_file and kh_file:
         df_eas = clean_eas(df_raw)
         df_fiv = build_fiv(df_eas, df_kh)
 
-        # --- Ép IdRef thành text string ---
+        # --- Chuyển IdRef thành string để Excel hiểu text ---
         df_fiv['IdRef'] = df_fiv['IdRef'].astype(str)
 
-        # --- Giữ datetime64 chỉ phần ngày, loại bỏ giờ ---
-        for c in ['InvoiceDate','DocumentDate','BHS_VATInvocieDate_VATInvoice']:
-            df_fiv[c] = pd.to_datetime(df_fiv[c], errors='raise').dt.normalize()
+        # --- Chuyển các cột date thành date (không giờ) ---
+        """date_cols = ['InvoiceDate', 'DocumentDate', 'BHS_VATInvocieDate_VATInvoice']
+        for c in date_cols:
+            df_fiv[c] = pd.to_datetime(df_fiv[c], errors='raise').dt.date"""
 
-        # --- Xuất Excel với định dạng cột ---
-        out = io.BytesIO()
-        with pd.ExcelWriter(out, engine='xlsxwriter') as writer:
+        date_cols = ['InvoiceDate', 'DocumentDate', 'BHS_VATInvocieDate_VATInvoice']
+        for c in date_cols:
+            df_fiv[c] = pd.to_datetime(df_fiv[c], errors='raise').dt.strftime('%m/%d/%Y')
+
+        # --- Ghi Excel với định dạng ---
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             df_fiv.to_excel(writer, index=False, sheet_name='FIV')
             wb = writer.book
             ws = writer.sheets['FIV']
 
-            # IdRef → Text format để có tam giác xanh
-            tf = wb.add_format({'num_format': '@'})
-            ws.set_column('A:A', 10, tf)
+            # Text format cho IdRef → tam giác xanh
+            txt_fmt = wb.add_format({'num_format': '@'})
+            ws.set_column(0, 0, 10, txt_fmt)
 
-            # Date format dd/mm/yyyy (dấu slash literal)
-            dfmt = wb.add_format({'num_format': 'dd\\/mm\\/yyyy'})
-            # cột B,C và AB
-            ws.set_column('B:C', 12, dfmt)
-            ws.set_column('AB:AB', 12, dfmt)
+            # Short Date format cho các cột ngày
+            dt_fmt = wb.add_format({'num_format': 'dd/mm/yyyy'})
+            ws.set_column(1, 2, 12, dt_fmt)    # InvoiceDate & DocumentDate
+            ws.set_column(27, 27, 12, dt_fmt)  # BHS_VATInvocieDate_VATInvoice
 
-        out.seek(0)
+        output.seek(0)
         st.download_button(
             "📥 Tải Completed_FIV.xlsx",
-            data=out.getvalue(),
+            data=output.getvalue(),
             file_name="Completed_FIV.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
     except Exception as e:
         st.error(f"Có lỗi: {e}")
