@@ -138,9 +138,9 @@ if eas_file and kh_file:
         for c in date_cols:
             df_fiv[c] = pd.to_datetime(df_fiv[c], errors='raise').dt.date
 
-        """date_cols = ['InvoiceDate', 'DocumentDate', 'BHS_VATInvocieDate_VATInvoice']
-        for c in date_cols:
-            df_fiv[c] = pd.to_datetime(df_fiv[c], errors='raise').dt.strftime('%m/%d/%Y')"""
+        #date_cols = ['InvoiceDate', 'DocumentDate', 'BHS_VATInvocieDate_VATInvoice']
+        #for c in date_cols:
+            #df_fiv[c] = pd.to_datetime(df_fiv[c], errors='raise').dt.strftime('%m/%d/%Y')"""
 
         # --- Ghi Excel với định dạng ---
         output = io.BytesIO()
