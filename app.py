@@ -255,7 +255,7 @@ elif tool_choice == "Agoda LCB":
 
     agoda_file = st.file_uploader("📂 Chọn file Agoda (Excel)", type=["xlsx"], key="agoda")
 
-    if agoda_file and (start_date <= end_date):
+    """if agoda_file and (start_date <= end_date):
         try:
             df = pd.read_excel(agoda_file, sheet_name="file tải xuống từ Agoda")
             df["Ngày trả phòng"] = df["Ngày trả phòng"].apply(parse_vietnamese_date)
@@ -297,4 +297,82 @@ elif tool_choice == "Agoda LCB":
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
         except Exception as e:
+            st.error(f"❌ Có lỗi khi xử lý file Agoda: {e}")"""
+        if agoda_file and (start_date <= end_date):
+        try:
+            # Các cột bắt buộc cần có trong sheet
+            required_cols = {"Ngày trả phòng", "Doanh thu thực", "Số tiền bị trừ"}
+
+            # Đọc danh sách sheet trước
+            xls = pd.ExcelFile(agoda_file)
+
+            # Tìm các sheet hợp lệ (đủ cột)
+            candidate_sheets = []
+            for sh in xls.sheet_names:
+                tmp = pd.read_excel(xls, sheet_name=sh, nrows=5)  # đọc nhẹ để kiểm tra cột
+                if required_cols.issubset(set(tmp.columns)):
+                    candidate_sheets.append(sh)
+
+            if not candidate_sheets:
+                raise ValueError(
+                    "Không tìm thấy sheet nào có đủ các cột bắt buộc: "
+                    + ", ".join(sorted(required_cols))
+                )
+
+            # Nếu có nhiều sheet hợp lệ, cho người dùng chọn
+            if len(candidate_sheets) > 1:
+                chosen_sheet = st.selectbox(
+                    "🧾 Chọn sheet cần xử lý",
+                    options=candidate_sheets,
+                    index=0,
+                    help="Hệ thống tìm thấy nhiều sheet phù hợp. Hãy chọn sheet đúng để xử lý."
+                )
+            else:
+                chosen_sheet = candidate_sheets[0]
+
+            # === THAY CHO DÒNG CŨ: df = pd.read_excel(agoda_file, sheet_name="file tải xuống từ Agoda")
+            df = pd.read_excel(xls, sheet_name=chosen_sheet)
+            # === HẾT PHẦN THAY ===
+
+            # Chuẩn hóa dữ liệu như cũ
+            df["Ngày trả phòng"] = df["Ngày trả phòng"].apply(parse_vietnamese_date)
+
+            df["Doanh thu thực"] = (
+                df["Doanh thu thực"].astype(str)
+                .str.replace(",", "", regex=False)
+                .str.strip()
+                .astype(float)
+            )
+            df["Số tiền bị trừ"] = (
+                df["Số tiền bị trừ"].astype(str)
+                .str.replace(",", "", regex=False)
+                .str.strip()
+                .astype(float)
+            )
+
+            start_ts = pd.to_datetime(start_date)
+            end_ts = pd.to_datetime(end_date)
+            mask_date = (df["Ngày trả phòng"] >= start_ts) & (df["Ngày trả phòng"] <= end_ts)
+            df_filtered = df.loc[mask_date].copy()
+            df_filtered = df_filtered[
+                (df_filtered["Doanh thu thực"] > 0) & (df_filtered["Số tiền bị trừ"] > 0)
+            ]
+            df_filtered = df_filtered.loc[:, ~df_filtered.columns.str.contains("^Unnamed")]
+
+            st.subheader("📊 Bảng dữ liệu sau khi lọc")
+            st.dataframe(df_filtered)
+
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                df_filtered.to_excel(writer, index=False, sheet_name="Agoda")
+            output.seek(0)
+            file_name = f"Agoda_processed_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.xlsx"
+            st.download_button(
+                "📥 Tải file Agoda đã xử lý",
+                data=output.getvalue(),
+                file_name=file_name,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        except Exception as e:
             st.error(f"❌ Có lỗi khi xử lý file Agoda: {e}")
+
