@@ -298,7 +298,7 @@ elif tool_choice == "Agoda LCB":
             )
         except Exception as e:
             st.error(f"❌ Có lỗi khi xử lý file Agoda: {e}")"""
-        if agoda_file and (start_date <= end_date):
+    if agoda_file and (start_date <= end_date):
         try:
             # Các cột bắt buộc cần có trong sheet
             required_cols = {"Ngày trả phòng", "Doanh thu thực", "Số tiền bị trừ"}
