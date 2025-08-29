@@ -71,7 +71,7 @@ def parse_vietnamese_date(value: str) -> pd.Timestamp:
             day, _, month, year = parts
             try:
                 date_str = f"{day}-{month}-{year}"
-                return pd.to_datetime(date_str, format="%d-%m-%Y", errors="coerce")
+                return pd.to_datetime(date_str, format="%d/%m/%Y", errors="coerce")
             except Exception:
                 return pd.NaT
     return pd.NaT
