@@ -64,7 +64,7 @@ st.markdown("""
 # ========================
 # Functions
 # ========================
-def parse_vietnamese_date(value: str) -> pd.Timestamp:
+"""def parse_vietnamese_date(value: str) -> pd.Timestamp:
     if isinstance(value, str):
         parts = value.split()
         if len(parts) == 4 and parts[1].lower() == 'thg':
@@ -74,7 +74,19 @@ def parse_vietnamese_date(value: str) -> pd.Timestamp:
                 return pd.to_datetime(date_str, format="%d/%m/%Y", errors="coerce")
             except Exception:
                 return pd.NaT
+    return pd.NaT"""
+def parse_vietnamese_date(value: str) -> pd.Timestamp:
+    if isinstance(value, str):
+        parts = value.strip().split()
+        # Dạng "13 thg 08 2025"
+        if len(parts) == 4 and parts[1].lower() == 'thg':
+            day, _, month, year = parts
+            date_str = f"{day}/{month}/{year}"
+            return pd.to_datetime(date_str, format="%d/%m/%Y", errors="coerce")
+        # Dạng "13/08/2025" hoặc "13-08-2025"
+        return pd.to_datetime(value, dayfirst=True, errors='coerce')
     return pd.NaT
+
 
 def detect_header_row(df_raw):
     for idx, row in df_raw.iterrows():
@@ -218,7 +230,11 @@ if tool_choice == "Senspa Automation Excel-AX":
             df_fiv['IdRef'] = df_fiv['IdRef'].astype(str)
             date_cols = ['InvoiceDate', 'DocumentDate', 'BHS_VATInvocieDate_VATInvoice']
             for c in date_cols:
-                df_fiv[c] = pd.to_datetime(df_fiv[c]).dt.date
+                #df_fiv[c] = pd.to_datetime(df_fiv[c]).dt.date
+                df_fiv[c] = (
+                    pd.to_datetime(df_fiv[c], dayfirst=True, errors='coerce')
+                        .dt.date
+    )
 
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter', date_format='dd/mm/yyyy') as writer:
