@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import io
 import datetime
+import re
 
 # ----------------------
 # Page Config with Theme
@@ -64,19 +65,17 @@ st.markdown("""
 # ========================
 # Functions
 # ========================
+# ========== Utilities (giữ nguyên nghiệp vụ) ==========
 
 def parse_vietnamese_date(value: str) -> pd.Timestamp:
     if isinstance(value, str):
         parts = value.strip().split()
-        # Dạng "13 thg 08 2025"
         if len(parts) == 4 and parts[1].lower() == 'thg':
             day, _, month, year = parts
             date_str = f"{day}/{month}/{year}"
             return pd.to_datetime(date_str, format="%d/%m/%Y", errors="coerce")
-        # Dạng "13/08/2025" hoặc "13-08-2025"
         return pd.to_datetime(value, dayfirst=True, errors='coerce')
     return pd.NaT
-
 
 def detect_header_row(df_raw):
     for idx, row in df_raw.iterrows():
@@ -116,20 +115,40 @@ def clean_eas(df):
     df = df.dropna(subset=['Buyer Name', 'Revenue_ex_VAT']).reset_index(drop=True)
     return df
 
+# ==== FIX: luôn normalize account code về text có leading zero ====
+def normalize_account_code(val, width=9):
+    if pd.isna(val):
+        return pd.NA
+    s = str(val).strip()
+    if re.match(r'^\d+(\.0+)?$', s):
+        s = s.split('.')[0]
+    s = re.sub(r'\D', '', s)
+    return s.zfill(width)
+
 def build_fiv(df_eas, df_kh):
+    # chuẩn hóa cột Customer account trong file KH
+    if 'Customer account' in df_kh.columns:
+        df_kh['Customer account'] = df_kh['Customer account'].apply(lambda x: normalize_account_code(x, 9))
+
     taxkey_kh = next((c for c in df_kh.columns if any(x in c for x in ['MST','CMND','PASSPORT','Tax code'])), None)
     records = []
     for idx, row in df_eas.iterrows():
         buyer = row['Buyer Name']
         cust_acc = pd.NA
+
         if 'TaxCode' in row and pd.notna(row['TaxCode']) and taxkey_kh:
             m = df_kh[df_kh[taxkey_kh] == row['TaxCode']]['Customer account']
             if not m.empty:
                 cust_acc = m.iat[0]
+
         if pd.isna(cust_acc):
             m = df_kh[df_kh['Name'] == buyer]['Customer account']
             if not m.empty:
                 cust_acc = m.iat[0]
+
+        # luôn normalize cust_acc
+        if pd.notna(cust_acc):
+            cust_acc = normalize_account_code(cust_acc, 9)
 
         line_amount = row['Revenue_ex_VAT']
         vat_amount  = row.get('VAT_Amount', 0)
@@ -179,7 +198,13 @@ def build_fiv(df_eas, df_kh):
         'BHS_VATInvocieDate_VATInvoice','BHS_Form_VATInvoice','BHS_Serial_VATInvoice',
         'BHS_Number_VATInvoice','BHS_Description_VATInvoice'
     ]
-    return pd.DataFrame(records, columns=cols_order)
+    out = pd.DataFrame(records, columns=cols_order)
+
+    # ép 2 cột này về string
+    for c in ['CustAccount', 'InvoiceAccount']:
+        out[c] = out[c].astype('string')
+
+    return out
 
 # ========================
 # Sidebar
