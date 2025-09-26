@@ -89,6 +89,7 @@ def load_and_flatten_eas(eas_bytes):
     df_raw = df_raw[~df_raw.iloc[:, 0].str.contains(r'^\[\d+\]$', na=False)].reset_index(drop=True)
     header_row = detect_header_row(df_raw)
     df = pd.read_excel(io.BytesIO(eas_bytes), header=[header_row, header_row+1])
+    
 
     flat_cols = []
     for top, sub in df.columns:
@@ -154,6 +155,16 @@ def build_fiv(df_eas, df_kh):
         vat_amount  = row.get('VAT_Amount', 0)
         total_amt   = line_amount + vat_amount
 
+        # ==== xử lý InvoiceNumber để loại .0 ====
+        raw_inv = row.get('InvoiceNumber', '')
+        if pd.notna(raw_inv) and raw_inv != '':
+            try:
+                inv_number = str(int(float(raw_inv)))  # 145.0 -> 145
+            except Exception:
+                inv_number = str(raw_inv).strip()
+        else:
+            inv_number = ''
+
         records.append({
             'IdRef': idx + 1,
             'InvoiceDate': row['ISSUE_DATE'],
@@ -185,7 +196,7 @@ def build_fiv(df_eas, df_kh):
             'BHS_VATInvocieDate_VATInvoice': row['ISSUE_DATE'],
             'BHS_Form_VATInvoice': '',
             'BHS_Serial_VATInvoice': row.get('InvoiceSerial', ''),
-            'BHS_Number_VATInvoice': row.get('InvoiceNumber', ''),
+            'BHS_Number_VATInvoice': inv_number,
             'BHS_Description_VATInvoice': 'Doanh thu dịch vụ spa'
         })
 
@@ -200,11 +211,12 @@ def build_fiv(df_eas, df_kh):
     ]
     out = pd.DataFrame(records, columns=cols_order)
 
-    # ép 2 cột này về string
-    for c in ['CustAccount', 'InvoiceAccount']:
+    # ép các cột về string để giữ nguyên khi export
+    for c in ['CustAccount', 'InvoiceAccount', 'BHS_Number_VATInvoice']:
         out[c] = out[c].astype('string')
 
     return out
+
 
 # ========================
 # Sidebar
